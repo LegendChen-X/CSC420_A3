@@ -61,15 +61,13 @@ def HOG(src, tao, threshold, block_size):
                 descriptor[i][j][k] = descriptor[i][j][k] / math.sqrt(sigma + e ** 2)
     
     src = src.astype('float') / 255.0
-    normalizition = descriptor.reshape((m - 1, n - 1, 4, 6))
-    vis = np.sum(normalizition ** 2, axis = 2) * 7
+   
     angles_segs = np.arange(0, 180, 180 / 6)
-    meshX, meshY = np.meshgrid(np.r_[int(tao * 2 / 2) : tao * (y // tao) - (tao * 2 / 2) + 1: tao], np.r_[int(tao * 2 /2) : tao * (x // tao) - (tao * 2 / 2) + 1: tao])
-    meshU = vis * np.sin(angles_segs).reshape((1, 1, 6))
-    meshV = -1 * vis * np.cos(angles_segs).reshape((1, 1, 6))
+    meshX, meshY = np.meshgrid(np.r_[int(tao / 2) : tao * (y // tao) - 1: tao], np.r_[int(tao /2) : tao * (x // tao) -  1: tao])
+    
     plt.imshow(src, cmap='gray', vmin=0, vmax=1)
     for i in range(6):
-        plt.quiver(meshX - 0.5 * meshU[:, :, i], meshY - 0.5 * meshV[:, :, i], meshU[:, :, i], meshV[:, :, i], color="red", headaxislength=0, headlength=0, scale_units='xy', scale=1, width=0.002, angles='xy')
+        plt.quiver(meshX, meshY, np.sin(i * np.pi/6)*histogram[:,:,i]*0.001, np.cos(i * np.pi/6)*histogram[:,:,i]*0.001, color="red", headaxislength=0, headlength=0, linewidth=0.5, pivot='middle')
     plt.show()
     
 def getGreyImge(img):
@@ -78,7 +76,7 @@ def getGreyImge(img):
     return np.dot(img[...,:3], rgb_weights)
     
 if __name__ == '__main__':
-    img = plt.imread("./Q4/2.jpg")
+    img = plt.imread("./Q4/3.jpg")
     src = None
     if len(img.shape) == 2: src = img
     else: src = getGreyImge(img)
