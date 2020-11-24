@@ -23,7 +23,7 @@ def getGradient(src, threshold):
             if directions[i][j] < 0: directions[i][j] += 180
     return gradients, directions
     
-def HOG(src, tao, threshold, block_size):
+def HOG(src, tao, threshold, block_size, name):
     x, y = src.shape
     gradients, directions = getGradient(src, threshold)
     m = x // tao
@@ -37,7 +37,13 @@ def HOG(src, tao, threshold, block_size):
             elif 105 <= directions[i][j] and directions[i][j] < 135: histogram[i // tao][j // tao][4] += gradients[i][j]
             elif 135 <= directions[i][j] and directions[i][j] < 165: histogram[i // tao][j // tao][5] += gradients[i][j]
             else: histogram[i // tao][j // tao][0] += gradients[i][j]
-            
+    src = src.astype('float') / 255.0
+    angles_segs = np.arange(0, 180, 180 / 6)
+    meshX, meshY = np.meshgrid(np.r_[int(tao / 2) : tao * (y // tao) - 1: tao], np.r_[int(tao /2) : tao * (x // tao) -  1: tao])
+    plt.imshow(src, cmap='gray', vmin=0, vmax=1)
+    for i in range(6):
+        plt.quiver(meshX, meshY, np.sin(i * np.pi/6)*histogram[:,:,i]*0.001, np.cos(i * np.pi/6)*histogram[:,:,i]*0.001, color="red", headaxislength=0, headlength=0, linewidth=0.5, pivot='middle')
+    plt.show()
     length = (m-1) * (n-1) * 24
     descriptor = np.zeros((m-1,n-1,24), dtype=float)
     e = 0.001
@@ -56,28 +62,30 @@ def HOG(src, tao, threshold, block_size):
             for k in range(0,6):
                 sigma += histogram[i+1][j+1][k] ** 2
                 descriptor[i][j][18+k] = histogram[i+1][j+1][k]
-                
             for k in range(24):
                 descriptor[i][j][k] = descriptor[i][j][k] / math.sqrt(sigma + e ** 2)
-    
-    src = src.astype('float') / 255.0
-   
-    angles_segs = np.arange(0, 180, 180 / 6)
-    meshX, meshY = np.meshgrid(np.r_[int(tao / 2) : tao * (y // tao) - 1: tao], np.r_[int(tao /2) : tao * (x // tao) -  1: tao])
-    
-    plt.imshow(src, cmap='gray', vmin=0, vmax=1)
-    for i in range(6):
-        plt.quiver(meshX, meshY, np.sin(i * np.pi/6)*histogram[:,:,i]*0.001, np.cos(i * np.pi/6)*histogram[:,:,i]*0.001, color="red", headaxislength=0, headlength=0, linewidth=0.5, pivot='middle')
-    plt.show()
+    fpt = open(name, 'w')
+    for i in range(m-1):
+        for j in range(n-1):
+            for k in range(24):
+                fpt.write(str(descriptor[i][j][k])+' ')
+            fpt.write('\n')
+    fpt.close()
     
 def getGreyImge(img):
 # Change the rgb value to grey. #
     rgb_weights = [0.2989, 0.5870, 0.1140]
     return np.dot(img[...,:3], rgb_weights)
     
-if __name__ == '__main__':
-    img = plt.imread("./Q4/3.jpg")
+def main(path, tao, threshold, block_size, name):
+    img = plt.imread(path)
     src = None
     if len(img.shape) == 2: src = img
     else: src = getGreyImge(img)
-    HOG(src, 8, 0.01, 2)
+    HOG(src, tao, threshold, block_size, name)
+    
+    
+if __name__ == '__main__':
+    main("./Q4/1.jpg", 8, 0.01, 2, "1.txt")
+    main("./Q4/2.jpg", 8, 0.01, 2, "2.txt")
+    main("./Q4/3.jpg", 8, 0.01, 2, "3.txt")
