@@ -29,14 +29,27 @@ def HOG(src, tao, threshold, block_size, name):
     m = x // tao
     n = y // tao
     histogram = np.zeros((m, n, 6), dtype=float)
+    occ = np.zeros((m, n, 6), dtype=int)
     for i in range(m * tao):
         for j in range(n * tao):
-            if 15 <= directions[i][j] and directions[i][j] < 45: histogram[i // tao][j // tao][1] += gradients[i][j]
-            elif 45 <= directions[i][j] and directions[i][j] < 75: histogram[i // tao][j // tao][2] += gradients[i][j]
-            elif 75 <= directions[i][j] and directions[i][j] < 105: histogram[i // tao][j // tao][3] += gradients[i][j]
-            elif 105 <= directions[i][j] and directions[i][j] < 135: histogram[i // tao][j // tao][4] += gradients[i][j]
-            elif 135 <= directions[i][j] and directions[i][j] < 165: histogram[i // tao][j // tao][5] += gradients[i][j]
-            else: histogram[i // tao][j // tao][0] += gradients[i][j]
+            if 15 <= directions[i][j] and directions[i][j] < 45:
+                histogram[i // tao][j // tao][1] += gradients[i][j]
+                occ[i // tao][j // tao][1] += 1
+            elif 45 <= directions[i][j] and directions[i][j] < 75:
+                histogram[i // tao][j // tao][2] += gradients[i][j]
+                occ[i // tao][j // tao][2] += 1
+            elif 75 <= directions[i][j] and directions[i][j] < 105:
+                histogram[i // tao][j // tao][3] += gradients[i][j]
+                occ[i // tao][j // tao][3] += 1
+            elif 105 <= directions[i][j] and directions[i][j] < 135:
+                histogram[i // tao][j // tao][4] += gradients[i][j]
+                occ[i // tao][j // tao][4] += 1
+            elif 135 <= directions[i][j] and directions[i][j] < 165:
+                histogram[i // tao][j // tao][5] += gradients[i][j]
+                occ[i // tao][j // tao][5] += 1
+            else:
+                histogram[i // tao][j // tao][0] += gradients[i][j]
+                occ[i // tao][j // tao][0] += 1
     src = src.astype('float') / 255.0
     angles_segs = np.arange(0, 180, 180 / 6)
     meshX, meshY = np.meshgrid(np.r_[int(tao / 2) : tao * (y // tao) - 1: tao], np.r_[int(tao /2) : tao * (x // tao) -  1: tao])
@@ -83,7 +96,6 @@ def main(path, tao, threshold, block_size, name):
     if len(img.shape) == 2: src = img
     else: src = getGreyImge(img)
     HOG(src, tao, threshold, block_size, name)
-    
     
 if __name__ == '__main__':
     main("./Q4/1.jpg", 8, 0.01, 2, "1.txt")

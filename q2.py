@@ -29,7 +29,6 @@ def match(path_1, path_2):
     precount = 0
     iters = 40
     best_A = None
-    P = 0.995
     for i in range(iters):
         random_list = []
         while len(random_list)!=3:
@@ -47,17 +46,12 @@ def match(path_1, path_2):
         threshold = 5
         count = 0
         for j in range(m):
-            buff_pt = np.zeros((3,),dtype="float")
-            buff_pt[0] = src_pts[j][0]
-            buff_pt[1] = src_pts[j][1]
-            buff_pt[2] = 1.0
-            buff_pt.reshape((3,1))
+            buff_pt = np.array([src_pts[j][0], src_pts[j][1], 1.0])
             new_pt = A.dot(buff_pt.T)
             if (abs(new_pt[0]-dst_pts[j][0]) + abs(new_pt[1]-dst_pts[j][1])) < 5: count += 1
         if count > precount:
             precount = count
             best_A = A
-    print(best_A)
     h,w = img1.shape
     new_pt_1 = best_A.dot(np.array([0,0,1]).T)
     new_pt_2 = best_A.dot(np.array([w-1,0,1]).T)
@@ -94,10 +88,11 @@ def dynamtic_map(path_1, path_2, estimate):
             good_matches.append([m])
             good_matches_without_list.append(m)
     precount = 0
-    iters = 9999999999999
-    best_A = None
+    iters = 999999999
     P = 0.995
+    a = 0
     for i in range(iters):
+        a += 1
         random_list = []
         while len(random_list)!=3:
             i = random.randrange(0, len(good_matches))
@@ -114,21 +109,17 @@ def dynamtic_map(path_1, path_2, estimate):
         threshold = 5
         count = 0
         for j in range(m):
-            buff_pt = np.zeros((3,),dtype="float")
-            buff_pt[0] = src_pts[j][0]
-            buff_pt[1] = src_pts[j][1]
-            buff_pt[2] = 1.0
-            buff_pt.reshape((3,1))
+            buff_pt = np.array([src_pts[j][0], src_pts[j][1], 1.0])
             new_pt = A.dot(buff_pt.T)
             if (abs(new_pt[0]-dst_pts[j][0]) + abs(new_pt[1]-dst_pts[j][1])) < 5: count += 1
-        if (count / m) > estimate:
-            iters = int(math.log(1 - P) / math.log(1 - pow(count / m, 3)))
-            estimate = (count / m)
-            print(iters)
         if count > precount:
             precount = count
             best_A = A
-        if count > 0.995 * estimate * m : break
+            if (count / m) > estimate:
+                iters = int(math.log(1 - P) / math.log(1 - pow(count / m, 3)))
+                estimate = (count / m)
+        if i > P * m: break
+    print("new itertations:", a)
     h,w = img1.shape
     new_pt_1 = best_A.dot(np.array([0,0,1]).T)
     new_pt_2 = best_A.dot(np.array([w-1,0,1]).T)

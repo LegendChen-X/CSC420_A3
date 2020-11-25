@@ -24,47 +24,42 @@ def Gaussian_Model(sigma,point):
     return ratio * e_part
     
 def gauss1d(sigma, kernel_size):
-    if (kernel_size%2 == 0): length = length + 1
     center = kernel_size/2
     x_dist = np.arange(-center, center + 1)
     gauss1d = np.exp(-(x_dist**2)/(2*sigma**2))
     gauss1d = gauss1d/np.sum(gauss1d)
     return gauss1d
-'''
+
 def optical_flow(kernel_size, src_1, src_2):
-    m, n = src_1.shape
-    window = Gaussian_Blur(kernel_size/6,kernel_size)
+    height, width = src_1.shape
+    window = Gaussian_Blur(kernel_size/6, kernel_size)
 # Decrease the noise by using Gaussian
     src_1 = cv.filter2D(src_1,-1,window)
     src_2 = cv.filter2D(src_2,-1,window)
+# Soebl operator
     sobel_x = np.array([[-1,0,1],[-2,0,2],[-1,0,1]])
     sobel_y = np.array([[-1,-2,-1],[0,0,0],[1,2,1]])
 # Gradient x
     I_x = cv.filter2D(src_1,-1,sobel_x)
 # Gradient y
     I_y = cv.filter2D(src_1,-1,sobel_y)
-# Gradient I x y
-    I_xy = I_x * I_y
 # Two array to save the displacement
-    U = np.zeros((m, n),dtype="float")
-    V = np.zeros((m, n),dtype="float")
+    U = np.zeros((height, width),dtype="float")
+    V = np.zeros((height, width),dtype="float")
 # Mid of windows
     midpoint = kernel_size // 2
-    for i in range(m):
-        for j in range(n):
-# Initialize best_u and best_v with infinity value
-            best_u = 99999999.9
-            best_v = 99999999.9
+    for i in range(height):
+        for j in range(width):
 # Set i_buff and j_buff same with the original pixel position
             i_buff = i
             j_buff = j
 # Maximum time for iterations
             counter = 0
 # Bound for windows
-            left_bound_x = i - midpoint
-            right_bound_x = i + midpoint + 1
-            left_bound_y = j - midpoint
-            right_bound_y = j + midpoint + 1
+            left_bound_x = j - midpoint
+            right_bound_x = j + midpoint + 1
+            left_bound_y = i - midpoint
+            right_bound_y = i + midpoint + 1
 # Element of second moment matrix
             window_Ix = np.zeros((kernel_size,kernel_size),dtype='float')
             window_Iy = np.zeros((kernel_size,kernel_size),dtype='float')
@@ -74,26 +69,27 @@ def optical_flow(kernel_size, src_1, src_2):
             I_yy = 0.0
             I_xy = 0.0
 # Set the value for each windows and calculate the sigma value
-            count_x = 0
-            for x in range(left_bound_x, right_bound_x):
-                count_y = 0
-                for y in range(left_bound_y, right_bound_y):
-                    if x<0 or x>=m or y<0 or y>=n:
+            count_y = 0
+# Computer sum for I_x*I_x, I_*I_y, and I_x*I_y
+            for y in range(left_bound_y, right_bound_y):
+                count_x = 0
+                for x in range(left_bound_x, right_bound_x):
+                    if x<0 or x>=width or y<0 or y>=height:
                         I_xx += 0.0
                         I_yy += 0.0
                         I_xy += 0.0
-                        window_Ix[count_x][count_y] = 0.0
-                        window_Iy[count_x][count_y] = 0.0
-                        window_I[count_x][count_y] = 0.0
+                        window_Ix[count_y][count_x] = 0.0
+                        window_Iy[count_y][count_x] = 0.0
+                        window_I[count_y][count_x] = 0.0
                     else:
-                        I_xx += (I_x[x][y] * I_x[x][y])
-                        I_yy += (I_y[x][y] * I_y[x][y])
-                        I_xy += (I_x[x][y] * I_y[x][y])
-                        window_Ix[count_x][count_y] = I_x[x][y]
-                        window_Iy[count_x][count_y] = I_y[x][y]
-                        window_I[count_x][count_y] = src_1[x][y]
-                    count_y += 1
-                count_x += 1
+                        I_xx += (I_x[y][x] * I_x[y][x])
+                        I_yy += (I_y[y][x] * I_y[y][x])
+                        I_xy += (I_x[y][x] * I_y[y][x])
+                        window_Ix[count_y][count_x] = I_x[y][x]
+                        window_Iy[count_y][count_x] = I_y[y][x]
+                        window_I[count_y][count_x] = src_1[y][x]
+                    count_x += 1
+                count_y += 1
 ### Second Moment Matrix
             M = np.array([[I_xx,I_xy],[I_xy,I_yy]])
             while 1:
@@ -103,19 +99,22 @@ def optical_flow(kernel_size, src_1, src_2):
                 try: M_inv = la.inv(M)
                 except: break
 # Compute bound for t
-                left_bound_x_t = i_buff - midpoint
-                right_bound_x_t = i_buff + midpoint + 1
-                left_bound_y_t = j_buff - midpoint
-                right_bound_y_t = j_buff + midpoint + 1
+                left_bound_x_t = j_buff - midpoint
+                right_bound_x_t = j_buff + midpoint + 1
+                left_bound_y_t = i_buff - midpoint
+                right_bound_y_t = i_buff + midpoint + 1
 # Construct window I_t
                 window_It = np.zeros((kernel_size,kernel_size),dtype='float')
 # Give value for window I_t
-                count_x = 0
-                for x in range(left_bound_x_t, right_bound_x_t):
-                    count_y = 0
-                    for y in range(left_bound_y_t, right_bound_y_t):
-                        if x<0 or x>=m or y<0 or y>=n: window_It[count_x][count_y] = 0.0
-                        else: window_It[count_x][count_y] = src_2[x][y] - window_I[count_x][count_y]
+                count_y = 0
+                for y in range(left_bound_y_t, right_bound_y_t):
+                    count_x = 0
+                    for x in range(left_bound_x_t, right_bound_x_t):
+                        if x<0 or x>=width or y<0 or y>=height: window_It[count_y][count_x] = 0.0
+                        else: window_It[count_y][count_x] = src_2[y][x] - window_I[count_y][count_x]
+                        count_x += 1
+                    count_y += 1
+# 1-d to decrease the noise on t-axis
                 window_It = cv.filter2D(window_It,-1,gauss1d(kernel_size/6, kernel_size))
                 I_xt = 0.0
                 I_yt = 0.0
@@ -127,16 +126,13 @@ def optical_flow(kernel_size, src_1, src_2):
                 res = np.dot(M_inv, N).reshape((2,1))
                 buff_u, buff_v = res[0], res[1]
                 counter += 1
-                if buff_u + buff_v < 0.1 or counter == 5: break
+                if buff_u + buff_v < 0.7 or counter == 5: break
                 i_buff += int(buff_u)
                 j_buff += int(buff_v)
                 U[i][j] += buff_u
                 V[i][j] += buff_v
     return U, V
-'''
 
-def optical_flow(kernel_size, src_1, src_2):
-    
 
 def getGreyImge(img):
 # Change the rgb value to grey. #
@@ -160,4 +156,4 @@ def main(path_1, path_2, kernel_size):
     plt.show()
         
 if __name__ == '__main__':
-    main("./Q3_optical_flow/Evergreen/frame08.png", "./Q3_optical_flow/Evergreen/frame09.png", 15)
+    main("./Q3_optical_flow/Backyard/frame10.png", "./Q3_optical_flow/Backyard/frame11.png", 15)
