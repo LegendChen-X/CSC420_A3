@@ -32,105 +32,79 @@ def gauss1d(sigma, kernel_size):
 
 def optical_flow(kernel_size, src_1, src_2):
     height, width = src_1.shape
-    window = Gaussian_Blur(kernel_size/6, kernel_size)
-# Decrease the noise by using Gaussian
-    src_1 = cv.filter2D(src_1,-1,window)
-    src_2 = cv.filter2D(src_2,-1,window)
-# Soebl operator
+    blur_matrix = Gaussian_Blur(kernel_size/6, kernel_size)
+    src_1 = cv.filter2D(src_1,-1,blur_matrix)
+    src_2 = cv.filter2D(src_2,-1,blur_matrix)
     sobel_x = np.array([[-1,0,1],[-2,0,2],[-1,0,1]])
     sobel_y = np.array([[-1,-2,-1],[0,0,0],[1,2,1]])
-# Gradient x
     I_x = cv.filter2D(src_1,-1,sobel_x)
-# Gradient y
     I_y = cv.filter2D(src_1,-1,sobel_y)
-# Two array to save the displacement
     U = np.zeros((height, width),dtype="float")
     V = np.zeros((height, width),dtype="float")
-# Mid of windows
-    midpoint = kernel_size // 2
+    mid =  kernel_size // 2
     for i in range(height):
         for j in range(width):
-# Set i_buff and j_buff same with the original pixel position
-            i_buff = i
-            j_buff = j
-# Maximum time for iterations
-            counter = 0
-# Bound for windows
-            left_bound_x = j - midpoint
-            right_bound_x = j + midpoint + 1
-            left_bound_y = i - midpoint
-            right_bound_y = i + midpoint + 1
-# Element of second moment matrix
+            i_buf = i
+            j_buf = j
+            max_loop = 10
+            left_height_bound = i - mid
+            right_height_bound = i + mid + 1
+            left_width_bound = j - mid
+            right_width_bound = j + mid + 1
             window_Ix = np.zeros((kernel_size,kernel_size),dtype='float')
             window_Iy = np.zeros((kernel_size,kernel_size),dtype='float')
             window_I = np.zeros((kernel_size,kernel_size),dtype='float')
-# Sigma value of each position of second moment matrix
             I_xx = 0.0
             I_yy = 0.0
             I_xy = 0.0
-# Set the value for each windows and calculate the sigma value
-            count_y = 0
-# Computer sum for I_x*I_x, I_*I_y, and I_x*I_y
-            for y in range(left_bound_y, right_bound_y):
-                count_x = 0
-                for x in range(left_bound_x, right_bound_x):
-                    if x<0 or x>=width or y<0 or y>=height:
-                        I_xx += 0.0
-                        I_yy += 0.0
-                        I_xy += 0.0
-                        window_Ix[count_y][count_x] = 0.0
-                        window_Iy[count_y][count_x] = 0.0
-                        window_I[count_y][count_x] = 0.0
+            height_index = 0
+            for h in range(left_height_bound, right_height_bound):
+                width_index = 0
+                for w in range(left_width_bound, right_width_bound):
+                    if h < 0 or w < 0 or h >= height or w >= width: continue
                     else:
-                        I_xx += (I_x[y][x] * I_x[y][x])
-                        I_yy += (I_y[y][x] * I_y[y][x])
-                        I_xy += (I_x[y][x] * I_y[y][x])
-                        window_Ix[count_y][count_x] = I_x[y][x]
-                        window_Iy[count_y][count_x] = I_y[y][x]
-                        window_I[count_y][count_x] = src_1[y][x]
-                    count_x += 1
-                count_y += 1
-### Second Moment Matrix
+                        I_xx += (I_x[h][w] * I_x[h][w])
+                        I_yy += (I_y[h][w] * I_y[h][w])
+                        I_xy += (I_x[h][w] * I_y[h][w])
+                        window_Ix[height_index][width_index] = I_x[h][w]
+                        window_Iy[height_index][width_index] = I_y[h][w]
+                        window_I[height_index][width_index] = src_1[h][w]
+                    width_index += 1
+                height_index += 1
             M = np.array([[I_xx,I_xy],[I_xy,I_yy]])
             while 1:
-# Computer inverse of Second Moment Matrix
                 M_inv = None
-# Handle singluar matrix
                 try: M_inv = la.inv(M)
                 except: break
-# Compute bound for t
-                left_bound_x_t = j_buff - midpoint
-                right_bound_x_t = j_buff + midpoint + 1
-                left_bound_y_t = i_buff - midpoint
-                right_bound_y_t = i_buff + midpoint + 1
-# Construct window I_t
+                left_height_bound_t = i_buf - mid
+                right_height_bound_t = i_buf + mid + 1
+                left_width_bound_t = j_buf - mid
+                right_width_bound_t = j_buf + mid + 1
                 window_It = np.zeros((kernel_size,kernel_size),dtype='float')
-# Give value for window I_t
-                count_y = 0
-                for y in range(left_bound_y_t, right_bound_y_t):
-                    count_x = 0
-                    for x in range(left_bound_x_t, right_bound_x_t):
-                        if x<0 or x>=width or y<0 or y>=height: window_It[count_y][count_x] = 0.0
-                        else: window_It[count_y][count_x] = src_2[y][x] - window_I[count_y][count_x]
-                        count_x += 1
-                    count_y += 1
-# 1-d to decrease the noise on t-axis
+                height_index = 0
+                for h in range(left_height_bound_t, right_height_bound_t):
+                    width_index = 0
+                    for w in range(left_width_bound_t, right_width_bound_t):
+                        if h < 0 or w < 0 or h >= height or w >= width: window_It[height_index][width_index] -= window_I[height_index][width_index]
+                        else: window_It[height_index][width_index] = src_2[h][w] - window_I[height_index][width_index]
+                        width_index += 1
+                    height_index += 1
                 window_It = cv.filter2D(window_It,-1,gauss1d(kernel_size/6, kernel_size))
                 I_xt = 0.0
                 I_yt = 0.0
-                for a in range(kernel_size):
-                    for b in range(kernel_size):
-                        I_xt += window_Ix[a][b] * window_It[a][b]
-                        I_yt += window_Iy[a][b] * window_It[a][b]
+                for h in range(kernel_size):
+                    for w in range(kernel_size):
+                        I_xt += window_Ix[h][w] * window_It[h][w]
+                        I_yt += window_Iy[h][w] * window_It[h][w]
                 N = np.array([-I_xt, -I_yt])
-                res = np.dot(M_inv, N).reshape((2,1))
-                buff_u, buff_v = res[0], res[1]
-                counter += 1
-                if buff_u + buff_v < 0.7 or counter == 5: break
-                i_buff += int(buff_u)
-                j_buff += int(buff_v)
-                U[i][j] += buff_u
-                V[i][j] += buff_v
+                res = np.dot(M_inv, N)
+                u, v = res[0], res[1]
+                max_loop -= 1
+                if (u + v < 0.5) or not max_loop: break
+                j_buf += int(u)
+                i_buf += int(v)
+                U[i][j] = u
+                V[i][j] = v
     return U, V
 
 
@@ -156,4 +130,4 @@ def main(path_1, path_2, kernel_size):
     plt.show()
         
 if __name__ == '__main__':
-    main("./Q3_optical_flow/Backyard/frame10.png", "./Q3_optical_flow/Backyard/frame11.png", 15)
+    main("./Q3_optical_flow/Backyard/frame07.png", "./Q3_optical_flow/Backyard/frame11.png", 25)
