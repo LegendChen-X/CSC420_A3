@@ -118,8 +118,10 @@ def dynamtic_map(path_1, path_2, estimate):
             if (count / m) > estimate:
                 iters = int(math.log(1 - P) / math.log(1 - pow(count / m, 3)))
                 estimate = (count / m)
-        if i > P * m: break
-    print("new itertations:", a)
+                print("new iters:",iters)
+                print("new est:", estimate)
+        if a > iters: break
+    print("itertations:", a)
     h,w = img1.shape
     new_pt_1 = best_A.dot(np.array([0,0,1]).T)
     new_pt_2 = best_A.dot(np.array([w-1,0,1]).T)

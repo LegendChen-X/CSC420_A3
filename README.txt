@@ -1,5 +1,7 @@
 # CSC420_A3
 
+## I have used three grace token for this assignment, the due day should be 26 Nov.
+
 > **Note for Linux users:** if you're using Ubuntu, make sure you've installed the following packages if
 > you haven't done so already:
 >

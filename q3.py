@@ -23,90 +23,90 @@ def Gaussian_Model(sigma,point):
     e_part = math.exp(-(x**2+y**2)/(2*sigma**2))
     return ratio * e_part
     
-def gauss1d(sigma, kernel_size):
-    center = kernel_size/2
-    x_dist = np.arange(-center, center + 1)
-    gauss1d = np.exp(-(x_dist**2)/(2*sigma**2))
-    gauss1d = gauss1d/np.sum(gauss1d)
-    return gauss1d
-
 def optical_flow(kernel_size, src_1, src_2):
+# Get height and width
     height, width = src_1.shape
-    blur_matrix = Gaussian_Blur(kernel_size/6, kernel_size)
-    src_1 = cv.filter2D(src_1,-1,blur_matrix)
-    src_2 = cv.filter2D(src_2,-1,blur_matrix)
-    sobel_x = np.array([[-1,0,1],[-2,0,2],[-1,0,1]])
-    sobel_y = np.array([[-1,-2,-1],[0,0,0],[1,2,1]])
-    I_x = cv.filter2D(src_1,-1,sobel_x)
-    I_y = cv.filter2D(src_1,-1,sobel_y)
-    U = np.zeros((height, width),dtype="float")
-    V = np.zeros((height, width),dtype="float")
+# Get blur matrix
+    blur_matrix = Gaussian_Blur(0.83, 5)
+# Decrease the noise
+    src_1 = cv.filter2D(src_1, -1, blur_matrix)
+    src_2 = cv.filter2D(src_2, -1, blur_matrix)
+# Get sobel operator.
+    sobel_x = np.array([[-1,0,1], [-2,0,2], [-1,0,1]])
+    sobel_y = np.array([[-1,-2,-1], [0,0,0], [1,2,1]])
+# Get gradient X
+    I_x = cv.filter2D(src_1, -1, sobel_x)
+# Get gradient Y
+    I_y = cv.filter2D(src_1, -1, sobel_y)
+# Save vector U
+    U = np.zeros((height, width), dtype="float")
+# Save vector V
+    V = np.zeros((height, width), dtype="float")
+# Calculate mid of window
     mid =  kernel_size // 2
     for i in range(height):
         for j in range(width):
+# Set the original i_buf = i
             i_buf = i
+# Set the original j_buf = j
             j_buf = j
-            max_loop = 10
+# Set maximum loop number
+            max_loop = 5
+# Calculate left bound of x for the window
             left_height_bound = i - mid
+# Calculate right bound of x for the window
             right_height_bound = i + mid + 1
+# Calculate left bound of y for the window
             left_width_bound = j - mid
+# Calculate right bound of y for the window
             right_width_bound = j + mid + 1
-            window_Ix = np.zeros((kernel_size,kernel_size),dtype='float')
-            window_Iy = np.zeros((kernel_size,kernel_size),dtype='float')
-            window_I = np.zeros((kernel_size,kernel_size),dtype='float')
-            I_xx = 0.0
-            I_yy = 0.0
-            I_xy = 0.0
-            height_index = 0
-            for h in range(left_height_bound, right_height_bound):
-                width_index = 0
-                for w in range(left_width_bound, right_width_bound):
-                    if h < 0 or w < 0 or h >= height or w >= width: continue
-                    else:
-                        I_xx += (I_x[h][w] * I_x[h][w])
-                        I_yy += (I_y[h][w] * I_y[h][w])
-                        I_xy += (I_x[h][w] * I_y[h][w])
-                        window_Ix[height_index][width_index] = I_x[h][w]
-                        window_Iy[height_index][width_index] = I_y[h][w]
-                        window_I[height_index][width_index] = src_1[h][w]
-                    width_index += 1
-                height_index += 1
-            M = np.array([[I_xx,I_xy],[I_xy,I_yy]])
+# Cut boundary cases
+            if left_height_bound < 0 or left_width_bound < 0 or right_height_bound >= height or right_width_bound >= width: continue
+# Set window for gradient x
+            window_Ix = I_x[left_height_bound:right_height_bound, left_width_bound:right_width_bound]
+# Set window for gradient y
+            window_Iy = I_y[left_height_bound:right_height_bound, left_width_bound:right_width_bound]
+# Set window for I(t)
+            window_I = src_1[left_height_bound:right_height_bound, left_width_bound:right_width_bound]
+# Construct Matrix A
+            A = np.vstack((window_Ix.flatten(),window_Iy.flatten()))
+# Get the transcope of A
+            A_T = A.T
+# Calculate the inverse of A
+            inv_A = None
+# Handele exception
+            try: inv_A = np.linalg.pinv(A_T)
+            except: continue
+# Loop until small displacement
             while 1:
-                M_inv = None
-                try: M_inv = la.inv(M)
-                except: break
+# Boundary for I(t+1)
                 left_height_bound_t = i_buf - mid
                 right_height_bound_t = i_buf + mid + 1
                 left_width_bound_t = j_buf - mid
                 right_width_bound_t = j_buf + mid + 1
-                window_It = np.zeros((kernel_size,kernel_size),dtype='float')
-                height_index = 0
-                for h in range(left_height_bound_t, right_height_bound_t):
-                    width_index = 0
-                    for w in range(left_width_bound_t, right_width_bound_t):
-                        if h < 0 or w < 0 or h >= height or w >= width: window_It[height_index][width_index] -= window_I[height_index][width_index]
-                        else: window_It[height_index][width_index] = src_2[h][w] - window_I[height_index][width_index]
-                        width_index += 1
-                    height_index += 1
-                window_It = cv.filter2D(window_It,-1,gauss1d(kernel_size/6, kernel_size))
-                I_xt = 0.0
-                I_yt = 0.0
-                for h in range(kernel_size):
-                    for w in range(kernel_size):
-                        I_xt += window_Ix[h][w] * window_It[h][w]
-                        I_yt += window_Iy[h][w] * window_It[h][w]
-                N = np.array([-I_xt, -I_yt])
-                res = np.dot(M_inv, N)
+# Cut boundary cases
+                if left_height_bound_t < 0 or left_width_bound_t < 0 or right_height_bound_t >= height or right_width_bound_t >= width: break
+# Concadinate window_I(t) and window_I(t+1)
+                con_src = np.vstack((window_I.flatten(), src_2[left_height_bound_t:right_height_bound_t, left_width_bound_t:right_width_bound_t].flatten()))
+# t-axis blur
+                con_src = gaussian_filter1d(con_src, sigma = 0.1, axis = 0)
+# Construct Matrix b
+                window_It = con_src[1] - con_src[0]
+# Get the res
+                res = np.dot(inv_A, -window_It.T)
+# Get u, v displacement
                 u, v = res[0], res[1]
-                max_loop -= 1
-                if (u + v < 0.5) or not max_loop: break
+# Break when displacement is small or exceed max loop
+                if ((abs(u) + abs(v)) < 0.1) or not max_loop: break
+# Update j_buf and i_buf
                 j_buf += int(u)
                 i_buf += int(v)
-                U[i][j] = u
-                V[i][j] = v
+# Add displacement to U and V
+                U[i][j] += u
+                V[i][j] += v
+# Update upper bound of max_loop
+                max_loop -= 1
     return U, V
-
 
 def getGreyImge(img):
 # Change the rgb value to grey. #
@@ -116,18 +116,20 @@ def getGreyImge(img):
 def main(path_1, path_2, kernel_size):
     img_1 = plt.imread(path_1)
     img_2 = plt.imread(path_2)
-    U, V = optical_flow(5,getGreyImge(img_1), getGreyImge(img_2))
+    try: U, V = optical_flow(kernel_size, getGreyImge(img_1), getGreyImge(img_2))
+    except: U, V = optical_flow(kernel_size, img_1, img_2)
     t = 10
     U_first = U[::t, ::t]
     V_first = V[::t, ::t]
-    r, c = getGreyImge(img_1).shape
+    try: r, c = getGreyImge(img_1).shape
+    except: r, c = img_1.shape
     cols, rows = np.meshgrid(np.linspace(0, c - 1, c), np.linspace(0, r - 1, r))
     cols = cols[::t,::t]
     rows = rows[::t, ::t]
     plt.figure(figsize=(9,9))
-    plt.imshow(img_1)
-    plt.quiver(cols, rows, U_first, V_first, color='red')
+    plt.imshow(img_1, "gray")
+    plt.quiver(cols, rows, U_first, -V_first, color='red')
     plt.show()
         
 if __name__ == '__main__':
-    main("./Q3_optical_flow/Backyard/frame07.png", "./Q3_optical_flow/Backyard/frame11.png", 25)
+    main("./Q3_optical_flow/Yosemite/frame07.png", "./Q3_optical_flow/Yosemite/frame08.png", 5)
