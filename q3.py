@@ -97,7 +97,7 @@ def optical_flow(kernel_size, src_1, src_2):
 # Get u, v displacement
                 u, v = res[0], res[1]
 # Break when displacement is small or exceed max loop
-                if ((abs(u) + abs(v)) < 0.1) or not max_loop: break
+                if ((abs(u) + abs(v)) < 0.5) or not max_loop: break
 # Update j_buf and i_buf
                 j_buf += int(u)
                 i_buf += int(v)
@@ -127,9 +127,9 @@ def main(path_1, path_2, kernel_size):
     cols = cols[::t,::t]
     rows = rows[::t, ::t]
     plt.figure(figsize=(9,9))
-    plt.imshow(img_1, "gray")
+    plt.imshow(img_1)
     plt.quiver(cols, rows, U_first, -V_first, color='red')
     plt.show()
         
 if __name__ == '__main__':
-    main("./Q3_optical_flow/Yosemite/frame07.png", "./Q3_optical_flow/Yosemite/frame08.png", 5)
+    main("./Q3_optical_flow/Basketball/frame07.png", "./Q3_optical_flow/Basketball/frame08.png", 25)

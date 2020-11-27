@@ -17,11 +17,10 @@
 
 
 ## Tests Procedures
-
 ### Use `python3 q1.py` to get the graph for q1. 
-### Use `python3 q2.py` to get the graphes and the numerical result for q2. 
+### Use `python3 q2.py` to get the graphs and the numerical result for q2. 
 ### Use `python3 q3.py` to get the graph for q3. 
-### Use `python3 q4.py` to get the graphes for q4.
+### Use `python3 q4.py` to get the graphs for q4.
 
 ## Academic Honest
 I, Xiang Chen,  promise all codes are written by myself.
